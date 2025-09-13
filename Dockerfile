@@ -17,9 +17,8 @@ RUN adduser -S nodeuser -u 1001
 # Create public directory for frontend files
 RUN mkdir -p /app/public && chown -R nodeuser:nodejs /app
 
-# Copy application files
-COPY --chown=nodeuser:nodejs server.js ./
-COPY --chown=nodeuser:nodejs public/ ./public/
+# Copy application source code
+COPY --chown=nodeuser:nodejs . .
 
 # Switch to non-root user
 USER nodeuser
