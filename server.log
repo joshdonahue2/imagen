@@ -1,0 +1,4 @@
+Server running on port 3000
+Frontend available at: https://imagen.donahuenet.xyz
+API health check: https://imagen.donahuenet.xyz/api/health
+n8n webhook URL: https://n8n.donahuenet.xyz/webhook/image
