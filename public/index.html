@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Image Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+            font-size: 1.1rem;
+        }
+
+        .prompt-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            font-size: 16px;
+            resize: vertical;
+            min-height: 120px;
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+
+        .prompt-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .generate-btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .generate-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading-spinner {
+            display: none;
+            width: 24px;
+            height: 24px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: 500;
+            text-align: center;
+            display: none;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.loading {
+            background: #cce7ff;
+            color: #004085;
+            border: 1px solid #b3d7ff;
+        }
+
+        .result-section {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .generated-image {
+            width: 100%;
+            max-width: 512px;
+            height: auto;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin: 0 auto;
+            display: block;
+        }
+
+        .download-btn {
+            margin-top: 20px;
+            padding: 12px 24px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .download-btn:hover {
+            background: #218838;
+            transform: translateY(-1px);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e1e5e9;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AI Image Generator</h1>
+        
+        <form id="imageForm">
+            <div class="form-group">
+                <label for="prompt">Describe the image you want to generate:</label>
+                <textarea 
+                    id="prompt" 
+                    name="prompt" 
+                    class="prompt-input" 
+                    placeholder="A majestic mountain landscape at sunset with vibrant colors..."
+                    required
+                ></textarea>
+            </div>
+            
+            <button type="submit" id="generateBtn" class="generate-btn">
+                <div class="loading-spinner"></div>
+                <span id="btnText">Generate Image</span>
+            </button>
+            
+            <div class="progress-bar" id="progressBar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </form>
+        
+        <div id="status" class="status"></div>
+        
+        <div id="resultSection" class="result-section">
+            <img id="generatedImage" class="generated-image" alt="Generated image" />
+            <button id="downloadBtn" class="download-btn">Download Image</button>
+        </div>
+    </div>
+
+    <script>
+        class ImageGenerator {
+            constructor() {
+                this.form = document.getElementById('imageForm');
+                this.generateBtn = document.getElementById('generateBtn');
+                this.btnText = document.getElementById('btnText');
+                this.spinner = document.querySelector('.loading-spinner');
+                this.status = document.getElementById('status');
+                this.resultSection = document.getElementById('resultSection');
+                this.generatedImage = document.getElementById('generatedImage');
+                this.downloadBtn = document.getElementById('downloadBtn');
+                this.progressBar = document.getElementById('progressBar');
+                this.progressFill = document.getElementById('progressFill');
+                
+                this.currentImageBlob = null;
+                this.pollInterval = null;
+                
+                this.bindEvents();
+            }
+            
+            bindEvents() {
+                this.form.addEventListener('submit', (e) => this.handleSubmit(e));
+                this.downloadBtn.addEventListener('click', () => this.downloadImage());
+            }
+            
+            async handleSubmit(e) {
+                e.preventDefault();
+                
+                const prompt = document.getElementById('prompt').value.trim();
+                if (!prompt) return;
+                
+                this.setLoading(true);
+                this.hideResult();
+                this.showStatus('Sending your request to the AI...', 'loading');
+                this.showProgress(10);
+                
+                try {
+                    const response = await fetch('/api/generate', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ prompt })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Failed to start generation');
+                    }
+                    
+                    this.showProgress(30);
+                    this.showStatus('Your image is being generated...', 'loading');
+                    
+                    // Poll for result
+                    await this.pollForResult(data.taskId);
+                    
+                } catch (error) {
+                    console.error('Generation error:', error);
+                    this.showStatus(`Error: ${error.message}`, 'error');
+                } finally {
+                    this.setLoading(false);
+                    this.hideProgress();
+                }
+            }
+            
+            async pollForResult(taskId) {
+                let attempts = 0;
+                const maxAttempts = 120; // 10 minutes with 5-second intervals
+                let lastStatus = 'pending';
+                
+                this.pollInterval = setInterval(async () => {
+                    attempts++;
+                    
+                    if (attempts > maxAttempts) {
+                        clearInterval(this.pollInterval);
+                        this.showStatus('Generation timed out after 10 minutes. The process might still be running in the background.', 'error');
+                        return;
+                    }
+                    
+                    try {
+                        const response = await fetch(`/api/status/${taskId}`);
+                        
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+                        
+                        const data = await response.json();
+                        
+                        // Update status message if status changed
+                        if (data.status !== lastStatus) {
+                            lastStatus = data.status;
+                            this.updateStatusMessage(data.status, attempts);
+                        }
+                        
+                        if (data.status === 'completed' && data.imageData) {
+                            clearInterval(this.pollInterval);
+                            this.showProgress(100);
+                            await this.displayResult(data.imageData);
+                        } else if (data.status === 'error') {
+                            clearInterval(this.pollInterval);
+                            this.showStatus(`Generation failed: ${data.error || 'Unknown error'}`, 'error');
+                        } else {
+                            // Still processing, update progress based on status and time
+                            let progress = 30;
+                            if (data.status === 'processing') {
+                                progress = Math.min(40 + (attempts * 1), 85);
+                            } else {
+                                progress = Math.min(30 + (attempts * 0.5), 70);
+                            }
+                            this.showProgress(progress);
+                        }
+                    } catch (error) {
+                        console.error('Polling error:', error);
+                        
+                        // If we've been polling for a while and getting errors, show a message
+                        if (attempts > 5 && attempts % 10 === 0) {
+                            console.warn(`Polling attempt ${attempts} failed, continuing...`);
+                        }
+                        
+                        // Continue polling on network errors, but show warning after many attempts
+                        if (attempts > 30 && attempts % 20 === 0) {
+                            this.showStatus(`Still generating... (${Math.floor(attempts * 5 / 60)} minutes elapsed)`, 'loading');
+                        }
+                    }
+                }, 5000);
+            }
+            
+            updateStatusMessage(status, attempts) {
+                const elapsed = Math.floor(attempts * 5 / 60);
+                const minutes = elapsed > 0 ? ` (${elapsed}m elapsed)` : '';
+                
+                switch (status) {
+                    case 'pending':
+                        this.showStatus(`Sending request to n8n...${minutes}`, 'loading');
+                        break;
+                    case 'processing':
+                        this.showStatus(`AI is generating your image...${minutes}`, 'loading');
+                        break;
+                    default:
+                        this.showStatus(`Processing your request...${minutes}`, 'loading');
+                }
+            }
+            
+            async displayResult(base64Data) {
+                try {
+                    console.log('=== DEBUGGING IMAGE DISPLAY ===');
+                    console.log('Received base64 data length:', base64Data?.length);
+                    console.log('First 50 chars:', base64Data?.substring(0, 50));
+                    console.log('Last 50 chars:', base64Data?.substring(base64Data?.length - 50));
+                    
+                    // Check for common base64 issues
+                    if (!base64Data) {
+                        throw new Error('No image data received');
+                    }
+                    
+                    // Clean the base64 string (remove any whitespace/newlines)
+                    const cleanBase64 = base64Data.replace(/\s/g, '');
+                    console.log('Cleaned base64 length:', cleanBase64.length);
+                    console.log('Base64 validation - length divisible by 4?', cleanBase64.length % 4 === 0);
+                    
+                    // Test atob conversion
+                    console.log('Attempting atob conversion...');
+                    const binaryString = atob(cleanBase64);
+                    console.log('Successfully decoded base64, binary length:', binaryString.length);
+                    
+                    const bytes = new Uint8Array(binaryString.length);
+                    for (let i = 0; i < binaryString.length; i++) {
+                        bytes[i] = binaryString.charCodeAt(i);
+                    }
+                    console.log('Created byte array, length:', bytes.length);
+                    
+                    // Check if it looks like a valid image by checking headers
+                    const header = Array.from(bytes.slice(0, 8)).map(b => b.toString(16).padStart(2, '0')).join('');
+                    console.log('File header (hex):', header);
+                    
+                    this.currentImageBlob = new Blob([bytes], { type: 'image/png' });
+                    const imageUrl = URL.createObjectURL(this.currentImageBlob);
+                    
+                    console.log('Created blob URL:', imageUrl);
+                    console.log('Blob size:', this.currentImageBlob.size, 'bytes');
+                    
+                    this.generatedImage.src = imageUrl;
+                    this.showResult();
+                    this.showStatus('Image generated successfully!', 'success');
+                    
+                } catch (error) {
+                    console.error('=== IMAGE DISPLAY ERROR ===');
+                    console.error('Error:', error);
+                    console.error('Error message:', error.message);
+                    console.error('Base64 data that failed (first 100 chars):', base64Data?.substring(0, 100));
+                    this.showStatus(`Error displaying image: ${error.message}`, 'error');
+                }
+            }
+            
+            downloadImage() {
+                if (!this.currentImageBlob) return;
+                
+                const url = URL.createObjectURL(this.currentImageBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `generated-image-${Date.now()}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+            
+            setLoading(loading) {
+                this.generateBtn.disabled = loading;
+                this.spinner.style.display = loading ? 'inline-block' : 'none';
+                this.btnText.textContent = loading ? 'Generating...' : 'Generate Image';
+            }
+            
+            showStatus(message, type) {
+                this.status.textContent = message;
+                this.status.className = `status ${type}`;
+                this.status.style.display = 'block';
+            }
+            
+            hideStatus() {
+                this.status.style.display = 'none';
+            }
+            
+            showResult() {
+                this.resultSection.style.display = 'block';
+            }
+            
+            hideResult() {
+                this.resultSection.style.display = 'none';
+                if (this.currentImageBlob) {
+                    URL.revokeObjectURL(this.generatedImage.src);
+                    this.currentImageBlob = null;
+                }
+            }
+            
+            showProgress(percentage) {
+                this.progressBar.style.display = 'block';
+                this.progressFill.style.width = `${percentage}%`;
+            }
+            
+            hideProgress() {
+                this.progressBar.style.display = 'none';
+                this.progressFill.style.width = '0%';
+            }
+        }
+        
+        // Initialize the app when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            new ImageGenerator();
+        });
+    </script>
+</body>
+</html>
